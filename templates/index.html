@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sleek, real-time BigQuery release notes explorer and social sharer dashboard. Check the latest updates and instantly tweet them.">
+    <title>BigQuery Release Notes Explorer</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <!-- Background glowing spots -->
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+    <div class="glow-orb orb-3"></div>
+
+    <div class="dashboard-container">
+        <!-- HEADER -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="logo-wrapper">
+                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <h1>BigQuery</h1>
+                    <span class="badge badge-accent">Release Notes</span>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <div class="status-indicator">
+                    <span class="status-dot pulsing"></span>
+                    <span id="status-text" class="status-label">Synchronized</span>
+                    <span id="last-updated" class="status-time">Never</span>
+                </div>
+                <button id="refresh-btn" class="btn btn-primary" aria-label="Refresh Release Notes">
+                    <i data-lucide="refresh-cw" class="icon-spinner"></i>
+                    <span>Refresh</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN LAYOUT -->
+        <main class="app-layout">
+            <!-- SIDEBAR: Controls and Tweet Composer -->
+            <section class="app-sidebar" aria-label="Filters and Share Panel">
+                
+                <!-- Search and Filters -->
+                <div class="sidebar-card filter-card">
+                    <h2 class="section-title">
+                        <i data-lucide="search"></i>
+                        Filter Notes
+                    </h2>
+                    <div class="search-wrapper">
+                        <i data-lucide="search" class="search-input-icon"></i>
+                        <input type="text" id="search-input" placeholder="Search updates..." aria-label="Search updates">
+                        <button id="clear-search" class="clear-btn" style="display: none;" aria-label="Clear search">
+                            <i data-lucide="x"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="type-filter-group">
+                        <label class="filter-label">Filter by type</label>
+                        <div class="pills-container">
+                            <button class="pill active" data-type="all">All</button>
+                            <button class="pill" data-type="feature">
+                                <span class="dot-indicator bg-feature"></span>Feature
+                            </button>
+                            <button class="pill" data-type="announcement">
+                                <span class="dot-indicator bg-announcement"></span>Announcement
+                            </button>
+                            <button class="pill" data-type="fix">
+                                <span class="dot-indicator bg-fix"></span>Fix
+                            </button>
+                            <button class="pill" data-type="deprecation">
+                                <span class="dot-indicator bg-deprecation"></span>Deprecation
+                            </button>
+                            <button class="pill" data-type="issue">
+                                <span class="dot-indicator bg-issue"></span>Issue
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tweet Composer -->
+                <div class="sidebar-card tweet-composer-card">
+                    <h2 class="section-title">
+                        <svg class="x-logo-icon" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
+                        Tweet Composer
+                    </h2>
+                    
+                    <div id="composer-empty-state" class="composer-empty-state">
+                        <div class="empty-icon-wrapper">
+                            <i data-lucide="twitter"></i>
+                        </div>
+                        <p>Select any release note on the right to compose a tweet.</p>
+                    </div>
+
+                    <div id="composer-active-state" class="composer-active-state" style="display: none;">
+                        <div class="selected-note-preview">
+                            <div class="preview-header">
+                                <span id="preview-badge" class="badge">Feature</span>
+                                <span id="preview-date" class="preview-date">June 17, 2026</span>
+                            </div>
+                            <p id="preview-text" class="preview-snippet">Select an update...</p>
+                        </div>
+
+                        <div class="textarea-wrapper">
+                            <textarea id="tweet-textarea" rows="5" maxlength="280" placeholder="Customize your tweet..." aria-label="Tweet text content"></textarea>
+                            
+                            <div class="composer-footer">
+                                <div class="char-counter-container">
+                                    <svg class="progress-ring" width="36" height="36">
+                                        <circle class="progress-ring__circle-bg" stroke="rgba(255,255,255,0.06)" stroke-width="3" fill="transparent" r="14" cx="18" cy="18"/>
+                                        <circle id="char-progress" class="progress-ring__circle" stroke="#1DA1F2" stroke-width="3" fill="transparent" r="14" cx="18" cy="18"/>
+                                    </svg>
+                                    <span id="char-count-text" class="char-count-label">280</span>
+                                </div>
+                                
+                                <div class="hashtag-adder">
+                                    <button type="button" class="btn btn-outline-sm" id="btn-add-tags" title="Append #BigQuery #GoogleCloud">
+                                        <span>+ Add Tags</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button id="btn-share-tweet" class="btn btn-tweet btn-block">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                            </svg>
+                            <span>Share on X / Twitter</span>
+                        </button>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- MAIN CONTENT: Timeline of updates -->
+            <section class="app-content" aria-label="Release Notes Timeline">
+                <div class="timeline-header">
+                    <h2 class="timeline-title">Updates Feed</h2>
+                    <div id="results-count" class="results-count">Showing all updates</div>
+                </div>
+
+                <!-- Skeleton Loader -->
+                <div id="skeleton-loader" class="skeleton-loader">
+                    <div class="skeleton-date-group">
+                        <div class="skeleton-line skeleton-date"></div>
+                        <div class="skeleton-card"></div>
+                        <div class="skeleton-card"></div>
+                    </div>
+                    <div class="skeleton-date-group">
+                        <div class="skeleton-line skeleton-date"></div>
+                        <div class="skeleton-card"></div>
+                    </div>
+                </div>
+
+                <!-- Error State -->
+                <div id="error-state" class="error-state" style="display: none;">
+                    <div class="error-icon-wrapper">
+                        <i data-lucide="alert-circle"></i>
+                    </div>
+                    <h3>Failed to fetch release notes</h3>
+                    <p id="error-message">Could not connect to the release notes service. Please verify your connection or try again later.</p>
+                    <button id="btn-retry" class="btn btn-outline">Retry Connection</button>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="empty-state" style="display: none;">
+                    <div class="empty-icon-wrapper">
+                        <i data-lucide="filter-x"></i>
+                    </div>
+                    <h3>No matching updates found</h3>
+                    <p>Try adjusting your search keywords or checking a different category.</p>
+                    <button id="btn-reset-filters" class="btn btn-outline">Reset Search</button>
+                </div>
+
+                <!-- Timeline Container -->
+                <div id="timeline-list" class="timeline-list" style="display: none;">
+                    <!-- Date groups populated dynamically via JS -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
